@@ -16,16 +16,18 @@ class MainActivity : Activity() {
     private lateinit var tts: TextToSpeech
     private lateinit var log: TextView
 
-    private val hints = mapOf(
-        "টিকটক" to listOf("tiktok", "musically", "trill"),
-        "ইউটিউব" to listOf("youtube"),
-        "ফেসবুক" to listOf("facebook.katana", "facebook"),
-        "হোয়াটসঅ্যাপ" to listOf("whatsapp"),
-        "ক্যামেরা" to listOf("camera"),
-        "সেটিংস" to listOf("settings"),
-        "মেসেঞ্জার" to listOf("messenger", "orca"),
-        "গ্যালারি" to listOf("gallery", "photos"),
-        "ক্রোম" to listOf("chrome")
+    val direct = mapOf(
+            "টিকটক" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill", "com.zhiliaoapp.musically.go"),
+            "ইউটিউব" to listOf("com.google.android.youtube"),
+            "ফেসবুক" to listOf("com.facebook.katana", "com.facebook.lite"),
+            "হোয়াটসঅ্যাপ" to listOf("com.whatsapp", "com.whatsapp.w4b"),
+            "মেসেঞ্জার" to listOf("com.facebook.orca"),
+            "ক্রোম" to listOf("com.android.chrome")
+        )
+        for ((bn, pkgs) in direct) if (n.contains(norm(bn))) for (p in pkgs) {
+            val li = packageManager.getLaunchIntentForPackage(p)
+            if (li != null) { say("খুলছি"); startActivity(li); return }
+        }
     )
 
     private fun norm(x: String) = Normalizer.normalize(x, Normalizer.Form.NFC)
