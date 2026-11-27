@@ -8,6 +8,7 @@ import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import java.text.Normalizer
 import java.util.Locale
@@ -16,18 +17,26 @@ class MainActivity : Activity() {
     private lateinit var tts: TextToSpeech
     private lateinit var log: TextView
 
-    val direct = mapOf(
-            "টিকটক" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill", "com.zhiliaoapp.musically.go"),
-            "ইউটিউব" to listOf("com.google.android.youtube"),
-            "ফেসবুক" to listOf("com.facebook.katana", "com.facebook.lite"),
-            "হোয়াটসঅ্যাপ" to listOf("com.whatsapp", "com.whatsapp.w4b"),
-            "মেসেঞ্জার" to listOf("com.facebook.orca"),
-            "ক্রোম" to listOf("com.android.chrome")
-        )
-        for ((bn, pkgs) in direct) if (n.contains(norm(bn))) for (p in pkgs) {
-            val li = packageManager.getLaunchIntentForPackage(p)
-            if (li != null) { say("খুলছি"); startActivity(li); return }
-        }
+    private val hints = mapOf(
+        "টিকটক" to listOf("tiktok", "musically", "trill"),
+        "ইউটিউব" to listOf("youtube"),
+        "ফেসবুক" to listOf("facebook.katana", "facebook"),
+        "হোয়াটসঅ্যাপ" to listOf("whatsapp"),
+        "ক্যামেরা" to listOf("camera"),
+        "সেটিংস" to listOf("settings"),
+        "সেটিং" to listOf("settings"),
+        "মেসেঞ্জার" to listOf("messenger", "orca"),
+        "গ্যালারি" to listOf("gallery", "photos"),
+        "ক্রোম" to listOf("chrome")
+    )
+
+    private val direct = mapOf(
+        "টিকটক" to listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill", "com.zhiliaoapp.musically.go"),
+        "ইউটিউব" to listOf("com.google.android.youtube"),
+        "ফেসবুক" to listOf("com.facebook.katana", "com.facebook.lite"),
+        "হোয়াটসঅ্যাপ" to listOf("com.whatsapp", "com.whatsapp.w4b"),
+        "মেসেঞ্জার" to listOf("com.facebook.orca"),
+        "ক্রোম" to listOf("com.android.chrome")
     )
 
     private fun norm(x: String) = Normalizer.normalize(x, Normalizer.Form.NFC)
@@ -48,8 +57,10 @@ class MainActivity : Activity() {
         log = TextView(this)
         log.textSize = 18f
         log.text = "মাইক চেপে বলুন, যেমন: টিকটক খোল"
+        val sv = ScrollView(this)
+        sv.addView(log)
         root.addView(btn)
-        root.addView(log)
+        root.addView(sv)
         setContentView(root)
     }
 
@@ -86,6 +97,16 @@ class MainActivity : Activity() {
 
     private fun openApp(t: String) {
         val n = norm(t)
+
+        for ((bn, pkgs) in direct) {
+            if (n.contains(norm(bn))) {
+                for (p in pkgs) {
+                    val li = packageManager.getLaunchIntentForPackage(p)
+                    if (li != null) { say("খুলছি"); startActivity(li); return }
+                }
+            }
+        }
+
         val pm = packageManager
         val main = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val apps = pm.queryIntentActivities(main, 0)
@@ -104,6 +125,10 @@ class MainActivity : Activity() {
         }
         val launch = app?.let { pm.getLaunchIntentForPackage(it.activityInfo.packageName) }
         if (launch != null) { say("খুলছি"); startActivity(launch) }
-        else say("অ্যাপ পাইনি। শুনেছি: $t | অ্যাপ দেখেছি: ${apps.size}টি | হিন্ট: ${hint ?: "নেই"}")
+        else {
+            log.text = "অ্যাপ পাইনি। শুনেছি: $t\n\nইনস্টল করা অ্যাপ:\n" +
+                apps.joinToString("\n") { it.loadLabel(pm).toString() + " — " + it.activityInfo.packageName }
+            tts.speak("অ্যাপ পাইনি", TextToSpeech.QUEUE_FLUSH, null, "x")
+        }
     }
 }
