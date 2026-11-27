@@ -9,17 +9,27 @@ import android.speech.tts.TextToSpeech
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.text.Normalizer
 import java.util.Locale
 
 class MainActivity : Activity() {
     private lateinit var tts: TextToSpeech
     private lateinit var log: TextView
 
-    private val names = mapOf(
-        "টিকটক" to "tiktok", "ইউটিউব" to "youtube", "ফেসবুক" to "facebook",
-        "হোয়াটসঅ্যাপ" to "whatsapp", "ক্যামেরা" to "camera", "সেটিংস" to "settings",
-        "মেসেঞ্জার" to "messenger", "গ্যালারি" to "gallery", "ক্রোম" to "chrome"
+    private val hints = mapOf(
+        "টিকটক" to listOf("tiktok", "musically", "trill"),
+        "ইউটিউব" to listOf("youtube"),
+        "ফেসবুক" to listOf("facebook.katana", "facebook"),
+        "হোয়াটসঅ্যাপ" to listOf("whatsapp"),
+        "ক্যামেরা" to listOf("camera"),
+        "সেটিংস" to listOf("settings"),
+        "মেসেঞ্জার" to listOf("messenger", "orca"),
+        "গ্যালারি" to listOf("gallery", "photos"),
+        "ক্রোম" to listOf("chrome")
     )
+
+    private fun norm(x: String) = Normalizer.normalize(x, Normalizer.Form.NFC)
+        .replace("\u200c", "").replace("\u200d", "").replace(" ", "").lowercase()
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
@@ -62,27 +72,36 @@ class MainActivity : Activity() {
     }
 
     private fun handle(t: String) {
-        log.text = "আপনি বললেন: $t"
         val s = t.lowercase()
         if (s.contains("ব্যাটারি")) {
             val bm = getSystemService(BATTERY_SERVICE) as BatteryManager
             say("ব্যাটারি ${bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)} শতাংশ আছে")
             return
         }
-        if (s.contains("খোল") || s.contains("ওপেন") || s.contains("open")) { openApp(s); return }
-        say("বুঝতে পারিনি, আবার বলুন")
+        if (s.contains("খোল") || s.contains("খুল") || s.contains("ওপেন") || s.contains("open")) { openApp(t); return }
+        say("বুঝতে পারিনি, আবার বলুন। শুনেছি: $t")
     }
 
-    private fun openApp(s: String) {
-        var key = s
-        for ((bn, en) in names) if (s.contains(bn)) key = en
+    private fun openApp(t: String) {
+        val n = norm(t)
         val pm = packageManager
         val main = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val app = pm.queryIntentActivities(main, 0).firstOrNull {
-            val l = it.loadLabel(pm).toString().lowercase()
-            l.length > 2 && (key.contains(l) || l.contains(key))
+        val apps = pm.queryIntentActivities(main, 0)
+
+        var hint: List<String>? = null
+        for ((bn, h) in hints) if (n.contains(norm(bn))) hint = h
+
+        var rest = n
+        for (w in listOf("খোল", "খুলো", "খুল", "ওপেন", "করো", "কর", "দাও", "open")) rest = rest.replace(w, "")
+
+        val app = apps.firstOrNull {
+            val pkg = it.activityInfo.packageName.lowercase()
+            val label = norm(it.loadLabel(pm).toString())
+            if (hint != null) hint.any { h -> pkg.contains(h) || label.contains(h) }
+            else rest.length > 1 && (label.contains(rest) || rest.contains(label))
         }
         val launch = app?.let { pm.getLaunchIntentForPackage(it.activityInfo.packageName) }
-        if (launch != null) { say("খুলছি"); startActivity(launch) } else say("অ্যাপটা খুঁজে পাইনি")
+        if (launch != null) { say("খুলছি"); startActivity(launch) }
+        else say("অ্যাপ পাইনি। শুনেছি: $t | অ্যাপ দেখেছি: ${apps.size}টি | হিন্ট: ${hint ?: "নেই"}")
     }
 }
